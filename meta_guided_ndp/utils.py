@@ -17,6 +17,9 @@ def x0_sampling(dist, num_parameters):
 def seed_python_numpy_torch_cuda(seed):
     pass
 
+def image_to_patch(image, patch_size):
+    pass
+
 
 def mnist_data_loader():
     mnist_data = torchvision.datasets.MNIST(

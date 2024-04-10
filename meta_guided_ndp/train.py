@@ -1,15 +1,52 @@
 import copy
 
 from NDP import growing_graph as meta_ndp
-from utils import seed_python_numpy_torch_cuda
-
+from utils import seed_python_numpy_torch_cuda, mnist_data_loader, image_to_patch
 import numpy as np
 import torch
 import networkx as nx
+from tqdm import tqdm
+import torch.nn as nn
 
 
 def mnist_eval(G: nx.Graph, config: dict, seed: int = None):
-    pass
+    render = False
+    policy_connectivity = nx.to_numpy_array(G)
+    mnist_loader = mnist_data_loader()
+    criterion = nn.CrossEntropyLoss()
+    eval_loss = 0
+    try:
+        diameter = nx.diameter(G.to_undirected())
+    except:
+        diameter = int(np.sqrt(len(G)))
+        print(
+            f"WARNING: Graph is not connected due to prunning. Diameter manually set to {diameter}."
+        )
+    policy_connectivity = nx.to_numpy_array(G)
+
+    network_thinking_time = diameter + config["network_thinking_time_extra_rollout"]
+
+    for image, label in tqdm(mnist_loader):
+        image = image_to_patch(image=image, patch_size=config["patch_size"])
+        network_state[: config["observation_dim"]] = image
+        persistent_observation = (
+            image if config["persistent_observation_rollout"] else None
+        )
+        network_state = meta_ndp.propagate_features(
+            network_state=network_state,
+            W=policy_connectivity,
+            network_thinking_time=network_thinking_time,
+            recurrent_activation_function=config["recurrent_activation_function"],
+            additive_update=config["additive_update"],
+            persistent_observation=persistent_observation,
+            feature_transformation_model=None,
+        )
+        # Select action from the output nodes
+        output = network_state[-config["action_dim"] :]
+        loss = criterion(label, output)
+        eval_loss += loss
+
+    return eval_loss
 
 
 def fitness_functional(config: dict, graph: meta_ndp):
