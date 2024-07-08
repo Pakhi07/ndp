@@ -9,7 +9,7 @@ from tqdm import tqdm
 import torch.nn as nn
 
 
-def mnist_eval(G: nx.Graph, config: dict, seed: int = None):
+def worm_growth(G: nx.Graph, config: dict, seed: int = None):
     render = False
     policy_connectivity = nx.to_numpy_array(G)
     mnist_loader = mnist_data_loader()
@@ -178,7 +178,7 @@ def fitness_functional(config: dict, graph: meta_ndp):
                         0
                     ]
                 )
-                episode_reward = mnist_eval(G, config, seed_env_eval)
+                episode_reward = worm_growth(G, config, seed_env_eval)
                 mean_episode_reward += episode_reward
 
             mean_reward += mean_episode_reward / config["num_episode_evals"]
@@ -187,6 +187,29 @@ def fitness_functional(config: dict, graph: meta_ndp):
         return mean_reward
 
     return fitness
+
+def worm_growth(G: nx.Graph, niter=5, nrand=10, seed=None, sigma=True, omega=False, render=False):
+    """
+    High fitness value means the graph has small-worldness.
+    Returns a scalar measure of small-world-ness of a graph G.
+    Omega ought to be close to zero and/or sigma > 1
+    """
+    if sigma:
+        sigma_ = nx.sigma(G, niter=niter, nrand=nrand, seed=seed)
+    else:
+        sigma_ = 0
+    if omega:
+        abs_omega_inv_ = 1 / abs(nx.omega(G, niter=niter, nrand=nrand, seed=seed))
+    else:
+        abs_omega_inv_ = 0
+
+    if render:
+        s = nx.sigma(G, niter=niter, nrand=nrand, seed=seed)
+        o = nx.omega(G, niter=niter, nrand=nrand, seed=seed)
+        print(f"\nSigma (worm_growth if > 1): {s}")
+        print(f"Omega (worm_growth if ≈ 0): {o}")
+
+    return abs_omega_inv_ + sigma_
 
 
 def main():
